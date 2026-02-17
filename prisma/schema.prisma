@@ -1,0 +1,209 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User - Landlord account
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  properties    Property[]
+  tenants       Tenant[]
+  leases        Lease[]
+  expenses      Expense[]
+  maintenance   MaintenanceRequest[]
+  reminders     RentReminder[]
+  notifications Notification[]
+}
+
+// Property - Rental units owned by landlord
+model Property {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name            String
+  address         String
+  city            String
+  state           String
+  zipCode         String
+  propertyType    String    // apartment, house, condo, duplex, etc.
+  bedrooms        Int
+  bathrooms       Float
+  squareFeet      Int?
+  purchasePrice   Float?
+  purchaseDate    DateTime?
+  monthlyMortgage Float?
+  notes           String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  tenants         Tenant[]
+  leases          Lease[]
+  expenses        Expense[]
+  maintenance     MaintenanceRequest[]
+  
+  @@index([userId])
+}
+
+// Tenant - People renting properties
+model Tenant {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId      String?
+  property        Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  
+  firstName       String
+  lastName        String
+  email           String
+  phone           String
+  emergencyContact String?
+  emergencyPhone  String?
+  employmentInfo  String?
+  monthlyIncome   Float?
+  moveInDate      DateTime?
+  moveOutDate     DateTime?
+  status          String    @default("active") // active, inactive, pending
+  notes           String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  leases          Lease[]
+  reminders       RentReminder[]
+  maintenance     MaintenanceRequest[]
+  
+  @@index([userId])
+  @@index([propertyId])
+}
+
+// Lease - Digital lease documents
+model Lease {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId      String
+  property        Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  startDate       DateTime
+  endDate         DateTime
+  monthlyRent     Float
+  securityDeposit Float
+  leaseDocument   String?   // File path/URL to stored document
+  status          String    @default("active") // active, expired, terminated
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([propertyId])
+  @@index([tenantId])
+}
+
+// Expense - Track property expenses
+model Expense {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId      String?
+  property        Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  
+  category        String    // maintenance, utilities, insurance, taxes, mortgage, repairs, other
+  description     String
+  amount          Float
+  date            DateTime
+  receipt         String?   // File path/URL to stored receipt
+  isRecurring     Boolean   @default(false)
+  recurringPeriod String?   // monthly, yearly
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([propertyId])
+}
+
+// MaintenanceRequest - Track maintenance tasks
+model MaintenanceRequest {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId      String
+  property        Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  tenantId        String?
+  tenant          Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  
+  title           String
+  description     String
+  priority        String    @default("medium") // low, medium, high, emergency
+  status          String    @default("pending") // pending, in_progress, completed, cancelled
+  category        String    // plumbing, electrical, hvac, appliances, structural, other
+  estimatedCost   Float?
+  actualCost      Float?
+  scheduledDate   DateTime?
+  completedDate   DateTime?
+  notes           String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([propertyId])
+  @@index([tenantId])
+}
+
+// RentReminder - Track rent payments
+model RentReminder {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  amount          Float
+  dueDate         DateTime
+  paidDate        DateTime?
+  status          String    @default("pending") // pending, paid, late, waived
+  lateFee         Float?
+  notes           String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([tenantId])
+}
+
+// Notification - System notifications
+model Notification {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title           String
+  message         String
+  type            String    // rent_due, maintenance, lease_expiry, payment_received
+  isRead          Boolean   @default(false)
+  actionUrl       String?
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([userId])
+}

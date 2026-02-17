@@ -1,36 +1,139 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Landlord Property Management App
+
+A comprehensive property management application built with Next.js 16, Prisma, and Tailwind CSS.
+
+## Features
+
+- **User Authentication** - Secure login and registration system
+- **Dashboard** - Overview of properties, tenants, income, and maintenance requests
+- **Properties Management** - Add, view, and manage rental properties
+- **Tenants Management** - Track tenant information and property assignments
+- **Leases Management** - Manage lease agreements with date tracking
+- **Rent Reminders** - Schedule and track rent payments
+- **Maintenance Requests** - Handle tenant maintenance requests
+- **Expenses Tracking** - Record property expenses with recurring options
+
+## Tech Stack
+
+- **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS 4
+- **Backend**: Next.js API Routes
+- **Database**: SQLite (development) / PostgreSQL (production)
+- **ORM**: Prisma 5
+- **State Management**: Zustand
+- **Form Handling**: React Hook Form + Zod
+- **Icons**: Lucide React
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/oneil06/landlord-property-management.git
+cd landlord-property-management
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+```bash
+cp .env.example .env
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Initialize the database:
+```bash
+npx prisma db push
+```
 
-## Learn More
+5. Start the development server:
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment on Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Important: Database Configuration
 
-## Deploy on Vercel
+This app uses SQLite for local development, but SQLite is not supported on Vercel. You need to use a cloud database for production.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Option 1: Vercel Postgres (Recommended)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Create a new Vercel Postgres database in your Vercel project dashboard
+2. Add the database connection string to your environment variables:
+   - `DATABASE_URL` - Your Vercel Postgres connection string
+3. Update `prisma/schema.prisma` to use PostgreSQL:
+   ```prisma
+   datasource db {
+     provider  = "postgresql"
+     url       = env("DATABASE_URL")
+     directUrl = env("DATABASE_URL")
+   }
+   ```
+4. Deploy your project
+
+### Option 2: Supabase
+
+1. Create a Supabase project at [supabase.com](https://supabase.com)
+2. Copy the database connection string from Project Settings > Database
+3. Add `DATABASE_URL` to your Vercel environment variables
+4. Update `prisma/schema.prisma` to use PostgreSQL (see above)
+5. Deploy your project
+
+### Option 3: PlanetScale
+
+1. Create a PlanetScale database at [planetscale.com](https://planetscale.com)
+2. Copy the connection string
+3. Add `DATABASE_URL` to your Vercel environment variables
+4. Update `prisma/schema.prisma` to use MySQL:
+   ```prisma
+   datasource db {
+     provider = "mysql"
+     url      = env("DATABASE_URL")
+   }
+   ```
+5. Deploy your project
+
+### Deploy Steps
+
+1. Push your code to GitHub
+2. Import your repository on [Vercel](https://vercel.com/new)
+3. Add your `DATABASE_URL` environment variable
+4. Deploy!
+
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | Database connection string | `file:./dev.db` (local) or PostgreSQL URL (production) |
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── (auth)/           # Authentication pages (login, register)
+│   ├── (dashboard)/      # Dashboard and management pages
+│   ├── api/              # API routes
+│   └── globals.css       # Global styles
+├── lib/
+│   ├── auth.ts           # Authentication store (Zustand)
+│   └── prisma.ts         # Prisma client
+└── ...
+prisma/
+├── schema.prisma         # Database schema
+└── migrations/           # Database migrations
+```
+
+## License
+
+MIT

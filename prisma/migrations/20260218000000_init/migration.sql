@@ -1,6 +1,3 @@
--- CreateEnum
-CREATE TYPE "Role" AS ENUM ('USER', 'ADMIN');
-
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -8,6 +5,11 @@ CREATE TABLE "User" (
     "name" TEXT,
     "password" TEXT NOT NULL,
     "phone" TEXT,
+    "plan" TEXT NOT NULL DEFAULT 'FREE',
+    "stripeCustomerId" TEXT,
+    "stripeSubscriptionId" TEXT,
+    "planStatus" TEXT DEFAULT 'ACTIVE',
+    "planUpdatedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -149,6 +151,39 @@ CREATE TABLE "Notification" (
     CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "TeamMember" (
+    "id" TEXT NOT NULL,
+    "teamOwnerId" TEXT NOT NULL,
+    "memberId" TEXT NOT NULL,
+    "role" TEXT NOT NULL DEFAULT 'VIEWER',
+    "invitedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "acceptedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "TeamMember_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Document" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "originalName" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
+    "path" TEXT NOT NULL,
+    "propertyId" TEXT,
+    "tenantId" TEXT,
+    "category" TEXT NOT NULL DEFAULT 'general',
+    "description" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Document_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -194,6 +229,24 @@ CREATE INDEX "RentReminder_tenantId_idx" ON "RentReminder"("tenantId");
 -- CreateIndex
 CREATE INDEX "Notification_userId_idx" ON "Notification"("userId");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "TeamMember_memberId_key" ON "TeamMember"("memberId");
+
+-- CreateIndex
+CREATE INDEX "TeamMember_teamOwnerId_idx" ON "TeamMember"("teamOwnerId");
+
+-- CreateIndex
+CREATE INDEX "TeamMember_memberId_idx" ON "TeamMember"("memberId");
+
+-- CreateIndex
+CREATE INDEX "Document_userId_idx" ON "Document"("userId");
+
+-- CreateIndex
+CREATE INDEX "Document_propertyId_idx" ON "Document"("propertyId");
+
+-- CreateIndex
+CREATE INDEX "Document_tenantId_idx" ON "Document"("tenantId");
+
 -- AddForeignKey
 ALTER TABLE "Property" ADD CONSTRAINT "Property_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -235,3 +288,13 @@ ALTER TABLE "RentReminder" ADD CONSTRAINT "RentReminder_tenantId_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TeamMember" ADD CONSTRAINT "TeamMember_teamOwnerId_fkey" FOREIGN KEY ("teamOwnerId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TeamMember" ADD CONSTRAINT "TeamMember_memberId_fkey" FOREIGN KEY ("memberId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Document" ADD CONSTRAINT "Document_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+

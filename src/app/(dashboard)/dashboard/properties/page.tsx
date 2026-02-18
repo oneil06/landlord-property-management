@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuthStore } from '@/lib/auth'
+import { usePlanStore } from '@/lib/store/planStore'
 import {
-    Building,
+    Home,
     Plus,
     MapPin,
     Bed,
@@ -17,6 +18,7 @@ import {
     Eye,
     Search,
     Filter,
+    Lock,
 } from 'lucide-react'
 
 interface Property {
@@ -37,11 +39,16 @@ interface Property {
 export default function PropertiesPage() {
     const router = useRouter()
     const { token } = useAuthStore()
+    const { canAddProperty, openUpgradeModal, usage, planInfo } = usePlanStore()
     const [properties, setProperties] = useState<Property[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
     const [filterType, setFilterType] = useState('all')
     const [openMenu, setOpenMenu] = useState<string | null>(null)
+
+    // Use usage from store (updated from API) or fall back to local count
+    const propertyCount = usage?.properties ?? properties.length
+    const canAdd = canAddProperty()
 
     useEffect(() => {
         fetchProperties()
@@ -109,14 +116,32 @@ export default function PropertiesPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Properties</h1>
                     <p className="text-gray-500">Manage your rental properties</p>
+                    {planInfo && (
+                        <p className="text-sm text-gray-400 mt-1">
+                            {propertyCount} of {planInfo.limits.maxProperties === -1 ? '∞' : planInfo.limits.maxProperties} properties used
+                        </p>
+                    )}
                 </div>
-                <Link
-                    href="/dashboard/properties/new"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
-                >
-                    <Plus className="w-5 h-5" />
-                    Add Property
-                </Link>
+                {canAdd ? (
+                    <Link
+                        href="/dashboard/properties/new"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Add Property
+                    </Link>
+                ) : (
+                    <button
+                        onClick={() => openUpgradeModal()}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-xl font-medium cursor-not-allowed relative group"
+                    >
+                        <Lock className="w-5 h-5" />
+                        Add Property
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            Property limit reached. Upgrade to add more.
+                        </div>
+                    </button>
+                )}
             </div>
 
             {/* Search and Filter */}
@@ -157,7 +182,7 @@ export default function PropertiesPage() {
                         >
                             {/* Property Image Placeholder */}
                             <div className="h-40 bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                                <Building className="w-16 h-16 text-blue-300" />
+                                <Home className="w-16 h-16 text-blue-300" />
                             </div>
 
                             <div className="p-5">
@@ -235,7 +260,7 @@ export default function PropertiesPage() {
                 </div>
             ) : (
                 <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
-                    <Building className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <Home className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No properties found</h3>
                     <p className="text-gray-500 mb-4">
                         {searchQuery || filterType !== 'all'

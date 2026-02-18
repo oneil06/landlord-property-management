@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { assertPlanAllows, isUpgradeRequiredError, UpgradeRequiredError } from '@/lib/plans'
 
 function getUserIdFromToken(token: string | null | undefined): string | null {
     if (!token) return null
@@ -53,6 +54,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // Check plan limits before creating property
+        await assertPlanAllows(userId, 'create_property')
+
         const body = await request.json()
         const {
             name,
@@ -99,6 +103,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ property })
     } catch (error) {
         console.error('Create property error:', error)
+
+        // Handle upgrade required error
+        if (isUpgradeRequiredError(error)) {
+            return NextResponse.json(error, { status: 402 }) // 402 Payment Required
+        }
+
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

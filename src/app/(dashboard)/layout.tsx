@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAuthStore } from '@/lib/auth'
+import { usePlanStore } from '@/lib/store/planStore'
+import { UpgradeModal } from '@/components/UpgradeModal'
 import {
     Building2,
     LayoutDashboard,
@@ -19,6 +21,9 @@ import {
     X,
     ChevronDown,
     User,
+    CreditCard,
+    Crown,
+    FolderOpen,
 } from 'lucide-react'
 
 const navigation = [
@@ -29,6 +34,7 @@ const navigation = [
     { name: 'Maintenance', href: '/dashboard/maintenance', icon: Wrench },
     { name: 'Leases', href: '/dashboard/leases', icon: FileText },
     { name: 'Expenses', href: '/dashboard/expenses', icon: Receipt },
+    { name: 'Documents', href: '/dashboard/documents', icon: FolderOpen },
 ]
 
 export default function DashboardLayout({
@@ -39,6 +45,15 @@ export default function DashboardLayout({
     const router = useRouter()
     const pathname = usePathname()
     const { user, logout } = useAuthStore()
+    const {
+        plan,
+        planInfo,
+        fetchPlanData,
+        upgradeModalOpen,
+        closeUpgradeModal,
+        isOverLimit,
+        openUpgradeModal
+    } = usePlanStore()
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [userMenuOpen, setUserMenuOpen] = useState(false)
     const [notifications] = useState([])
@@ -46,8 +61,14 @@ export default function DashboardLayout({
     useEffect(() => {
         if (!user) {
             router.push('/login')
+        } else {
+            // Fetch plan data when user is logged in
+            const token = localStorage.getItem('token')
+            if (token) {
+                fetchPlanData(token)
+            }
         }
-    }, [user, router])
+    }, [user, router, fetchPlanData])
 
     if (!user) {
         return (
@@ -64,6 +85,9 @@ export default function DashboardLayout({
 
     return (
         <div className="min-h-screen bg-gray-50">
+            {/* Upgrade Modal */}
+            <UpgradeModal isOpen={upgradeModalOpen} onClose={closeUpgradeModal} />
+
             {/* Mobile sidebar overlay */}
             {sidebarOpen && (
                 <div
@@ -94,14 +118,18 @@ export default function DashboardLayout({
 
                 <nav className="p-4 space-y-1">
                     {navigation.map((item) => {
-                        const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                        // For Dashboard, only highlight when exactly on /dashboard
+                        // For other items, highlight when pathname starts with the item's href
+                        const isActive = item.href === '/dashboard'
+                            ? pathname === '/dashboard'
+                            : pathname === item.href || pathname.startsWith(item.href + '/')
                         return (
                             <Link
                                 key={item.name}
                                 href={item.href}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActive
-                                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
-                                        : 'text-gray-600 hover:bg-gray-100'
+                                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                                    : 'text-gray-600 hover:bg-gray-100'
                                     }`}
                                 onClick={() => setSidebarOpen(false)}
                             >
@@ -112,16 +140,24 @@ export default function DashboardLayout({
                     })}
                 </nav>
 
-                {/* Upgrade Card */}
-                <div className="absolute bottom-4 left-4 right-4">
-                    <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-4 text-white">
-                        <h4 className="font-semibold mb-1">Upgrade to Pro</h4>
-                        <p className="text-sm text-blue-100 mb-3">Get advanced features and priority support</p>
-                        <button className="w-full bg-white text-blue-600 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors">
-                            Upgrade Now
+                {/* Upgrade Card - only show for FREE plan */}
+                {plan === 'FREE' && (
+                    <div className="absolute bottom-4 left-4 right-4">
+                        <button
+                            onClick={() => openUpgradeModal()}
+                            className="w-full bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-4 text-white hover:from-blue-700 hover:to-purple-700 transition-all text-left"
+                        >
+                            <div className="flex items-center gap-2 mb-1">
+                                <Crown className="w-4 h-4" />
+                                <h4 className="font-semibold">Upgrade to Pro</h4>
+                            </div>
+                            <p className="text-sm text-blue-100 mb-3">Get advanced features and priority support</p>
+                            <div className="w-full bg-white text-blue-600 py-2 rounded-lg text-sm font-medium text-center">
+                                Upgrade Now
+                            </div>
                         </button>
                     </div>
-                </div>
+                )}
             </aside>
 
             {/* Main content */}
@@ -143,6 +179,28 @@ export default function DashboardLayout({
                         </div>
 
                         <div className="flex items-center gap-4">
+                            {/* Plan Badge */}
+                            {plan !== 'FREE' && (
+                                <Link
+                                    href="/dashboard/billing"
+                                    className="hidden md:flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-medium rounded-full"
+                                >
+                                    <Crown className="w-3 h-3" />
+                                    {planInfo?.name || plan}
+                                </Link>
+                            )}
+
+                            {/* Over Limit Warning */}
+                            {isOverLimit && (
+                                <Link
+                                    href="/dashboard/billing"
+                                    className="hidden md:flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full"
+                                >
+                                    <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                                    Over Limit
+                                </Link>
+                            )}
+
                             {/* Notifications */}
                             <button className="relative p-2 rounded-lg hover:bg-gray-100">
                                 <Bell className="w-5 h-5 text-gray-500" />
@@ -171,7 +229,16 @@ export default function DashboardLayout({
                                         <div className="px-4 py-2 border-b border-gray-100">
                                             <p className="text-sm font-medium text-gray-900">{user.name || 'User'}</p>
                                             <p className="text-xs text-gray-500">{user.email}</p>
+                                            <p className="text-xs text-blue-600 mt-1">{planInfo?.name || 'Free'} Plan</p>
                                         </div>
+                                        <Link
+                                            href="/dashboard/billing"
+                                            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                            onClick={() => setUserMenuOpen(false)}
+                                        >
+                                            <CreditCard className="w-4 h-4" />
+                                            Billing
+                                        </Link>
                                         <button
                                             onClick={handleLogout}
                                             className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"

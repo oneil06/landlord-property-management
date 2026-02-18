@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuthStore } from '@/lib/auth'
-import { Building2, Mail, Lock, Eye, EyeOff, Loader2, User, Phone } from 'lucide-react'
+import { Building2, Mail, Lock, Eye, EyeOff, Loader2, User, Phone, ArrowLeft } from 'lucide-react'
 
 export default function RegisterPage() {
     const router = useRouter()
@@ -70,12 +70,21 @@ export default function RegisterPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+            {/* Back to Home Button */}
+            <Link
+                href="/"
+                className="absolute top-4 left-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="font-medium">Back to Home</span>
+            </Link>
+
             <div className="w-full max-w-md">
                 {/* Logo and Title */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg mb-4">
+                    <Link href="/" className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg mb-4 hover:scale-105 transition-transform">
                         <Building2 className="w-8 h-8 text-white" />
-                    </div>
+                    </Link>
                     <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
                     <p className="text-gray-600 mt-2">Start managing your properties today</p>
                 </div>

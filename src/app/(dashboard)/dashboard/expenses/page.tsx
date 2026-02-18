@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuthStore } from '@/lib/auth'
 import Link from 'next/link'
 import {
@@ -18,6 +18,7 @@ import {
     Pencil,
     Trash2,
     RefreshCw,
+    Eye,
 } from 'lucide-react'
 
 interface Expense {
@@ -55,10 +56,41 @@ export default function ExpensesPage() {
     const [searchQuery, setSearchQuery] = useState('')
     const [filterCategory, setFilterCategory] = useState('all')
     const [openMenu, setOpenMenu] = useState<string | null>(null)
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
+    const menuButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
 
     useEffect(() => {
         fetchExpenses()
     }, [])
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (openMenu) {
+                const target = e.target as HTMLElement
+                if (!target.closest('.dropdown-menu') && !target.closest('.menu-button')) {
+                    setOpenMenu(null)
+                }
+            }
+        }
+        if (openMenu) {
+            document.addEventListener('click', handleClickOutside)
+            return () => document.removeEventListener('click', handleClickOutside)
+        }
+    }, [openMenu])
+
+    const handleMenuClick = (expenseId: string, e: React.MouseEvent) => {
+        e.stopPropagation()
+        const button = menuButtonRefs.current[expenseId]
+        if (button) {
+            const rect = button.getBoundingClientRect()
+            setMenuPosition({
+                top: rect.bottom + window.scrollY,
+                left: rect.right - 144
+            })
+        }
+        setOpenMenu(openMenu === expenseId ? null : expenseId)
+    }
 
     const fetchExpenses = async () => {
         try {
@@ -205,8 +237,8 @@ export default function ExpensesPage() {
 
             {/* Expenses List */}
             {filteredExpenses.length > 0 ? (
-                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                    <div className="overflow-x-auto">
+                <div className="bg-white rounded-xl border border-gray-100 overflow-visible">
+                    <div className="overflow-x-auto overflow-y-visible">
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
@@ -258,16 +290,27 @@ export default function ExpensesPage() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center justify-end">
+                                            <div className="flex items-center justify-end gap-2">
                                                 <div className="relative">
                                                     <button
-                                                        onClick={() => setOpenMenu(openMenu === expense.id ? null : expense.id)}
-                                                        className="p-2 rounded-lg hover:bg-gray-100"
+                                                        ref={(el) => { menuButtonRefs.current[expense.id] = el }}
+                                                        onClick={(e) => handleMenuClick(expense.id, e)}
+                                                        className="menu-button p-2 rounded-lg hover:bg-gray-100"
                                                     >
                                                         <MoreVertical className="w-5 h-5 text-gray-400" />
                                                     </button>
                                                     {openMenu === expense.id && (
-                                                        <div className="absolute right-0 mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-10">
+                                                        <div
+                                                            className="dropdown-menu fixed bg-white rounded-lg shadow-lg border border-gray-100 py-1 w-36"
+                                                            style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
+                                                        >
+                                                            <Link
+                                                                href={`/dashboard/expenses/${expense.id}`}
+                                                                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                                View Details
+                                                            </Link>
                                                             <Link
                                                                 href={`/dashboard/expenses/${expense.id}/edit`}
                                                                 className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"

@@ -12,7 +12,7 @@ function getUserIdFromToken(token: string | null | undefined): string | null {
     }
 }
 
-// GET - Get single property
+// GET - Get single tenant
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -27,55 +27,48 @@ export async function GET(
 
         const { id } = await params
 
-        const property = await prisma.property.findFirst({
+        const tenant = await prisma.tenant.findFirst({
             where: { id, userId },
             include: {
-                tenants: {
+                property: {
                     select: {
                         id: true,
-                        firstName: true,
-                        lastName: true,
-                        email: true,
-                        phone: true,
-                        status: true,
+                        name: true,
+                        address: true,
+                        city: true,
+                        state: true,
+                        zipCode: true,
                     },
                 },
                 leases: {
-                    include: {
-                        tenant: { select: { firstName: true, lastName: true } },
-                    },
-                },
-                expenses: {
-                    orderBy: { date: 'desc' },
-                    take: 10,
+                    orderBy: { startDate: 'desc' },
+                    take: 5,
                 },
                 maintenance: {
                     orderBy: { createdAt: 'desc' },
                     take: 10,
-                    include: { tenant: { select: { firstName: true, lastName: true } } },
                 },
                 _count: {
                     select: {
-                        tenants: true,
+                        leases: true,
                         maintenance: true,
-                        expenses: true,
                     },
                 },
             },
         })
 
-        if (!property) {
-            return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+        if (!tenant) {
+            return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
         }
 
-        return NextResponse.json({ property })
+        return NextResponse.json({ tenant })
     } catch (error) {
-        console.error('Get property error:', error)
+        console.error('Get tenant error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
 
-// PUT - Update property
+// PUT - Update tenant
 export async function PUT(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -92,57 +85,65 @@ export async function PUT(
         const body = await request.json()
 
         // Verify ownership
-        const existingProperty = await prisma.property.findFirst({
+        const existingTenant = await prisma.tenant.findFirst({
             where: { id, userId },
         })
 
-        if (!existingProperty) {
-            return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+        if (!existingTenant) {
+            return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
         }
 
         const {
-            name,
-            address,
-            city,
-            state,
-            zipCode,
-            propertyType,
-            bedrooms,
-            bathrooms,
-            squareFeet,
-            purchasePrice,
-            purchaseDate,
-            monthlyMortgage,
+            firstName,
+            lastName,
+            email,
+            phone,
+            emergencyContact,
+            emergencyPhone,
+            employmentInfo,
+            monthlyIncome,
+            moveInDate,
+            moveOutDate,
+            status,
             notes,
+            propertyId,
         } = body
 
-        const property = await prisma.property.update({
+        const tenant = await prisma.tenant.update({
             where: { id },
             data: {
-                name,
-                address,
-                city,
-                state,
-                zipCode,
-                propertyType,
-                bedrooms: parseInt(bedrooms) || 0,
-                bathrooms: parseFloat(bathrooms) || 0,
-                squareFeet: squareFeet ? parseInt(squareFeet) : null,
-                purchasePrice: purchasePrice ? parseFloat(purchasePrice) : null,
-                purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
-                monthlyMortgage: monthlyMortgage ? parseFloat(monthlyMortgage) : null,
+                firstName,
+                lastName,
+                email,
+                phone,
+                emergencyContact,
+                emergencyPhone,
+                employmentInfo,
+                monthlyIncome: monthlyIncome ? parseFloat(monthlyIncome) : null,
+                moveInDate: moveInDate ? new Date(moveInDate) : null,
+                moveOutDate: moveOutDate ? new Date(moveOutDate) : null,
+                status,
                 notes,
+                propertyId: propertyId || null,
+            },
+            include: {
+                property: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
             },
         })
 
-        return NextResponse.json({ property })
+        return NextResponse.json({ tenant })
     } catch (error) {
-        console.error('Update property error:', error)
+        console.error('Update tenant error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
 
-// DELETE - Delete property
+// DELETE - Delete tenant
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -158,21 +159,21 @@ export async function DELETE(
         const { id } = await params
 
         // Verify ownership
-        const existingProperty = await prisma.property.findFirst({
+        const existingTenant = await prisma.tenant.findFirst({
             where: { id, userId },
         })
 
-        if (!existingProperty) {
-            return NextResponse.json({ error: 'Property not found' }, { status: 404 })
+        if (!existingTenant) {
+            return NextResponse.json({ error: 'Tenant not found' }, { status: 404 })
         }
 
-        await prisma.property.delete({
+        await prisma.tenant.delete({
             where: { id },
         })
 
         return NextResponse.json({ success: true })
     } catch (error) {
-        console.error('Delete property error:', error)
+        console.error('Delete tenant error:', error)
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }

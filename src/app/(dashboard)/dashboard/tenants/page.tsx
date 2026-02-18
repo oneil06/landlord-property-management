@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuthStore } from '@/lib/auth'
+import { usePlanStore } from '@/lib/store/planStore'
 import {
     Users,
     Plus,
@@ -18,6 +19,7 @@ import {
     Eye,
     DollarSign,
     Calendar,
+    Lock,
 } from 'lucide-react'
 
 interface Tenant {
@@ -36,6 +38,7 @@ interface Tenant {
 export default function TenantsPage() {
     const router = useRouter()
     const { token } = useAuthStore()
+    const { canAddTenant, openUpgradeModal, usage, planInfo } = usePlanStore()
     const [tenants, setTenants] = useState<Tenant[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
@@ -43,6 +46,10 @@ export default function TenantsPage() {
     const [openMenu, setOpenMenu] = useState<string | null>(null)
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
     const menuButtonRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
+
+    // Use usage from store (updated from API) or fall back to local count
+    const tenantCount = usage?.tenants ?? tenants.length
+    const canAdd = canAddTenant()
 
     useEffect(() => {
         fetchTenants()
@@ -150,14 +157,32 @@ export default function TenantsPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Tenants</h1>
                     <p className="text-gray-500">Manage your tenants and their information</p>
+                    {planInfo && (
+                        <p className="text-sm text-gray-400 mt-1">
+                            {tenantCount} of {planInfo.limits.maxTenants === -1 ? '∞' : planInfo.limits.maxTenants} tenants used
+                        </p>
+                    )}
                 </div>
-                <Link
-                    href="/dashboard/tenants/new"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
-                >
-                    <Plus className="w-5 h-5" />
-                    Add Tenant
-                </Link>
+                {canAdd ? (
+                    <Link
+                        href="/dashboard/tenants/new"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
+                    >
+                        <Plus className="w-5 h-5" />
+                        Add Tenant
+                    </Link>
+                ) : (
+                    <button
+                        onClick={() => openUpgradeModal()}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-xl font-medium cursor-not-allowed relative group"
+                    >
+                        <Lock className="w-5 h-5" />
+                        Add Tenant
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            Tenant limit reached. Upgrade to add more.
+                        </div>
+                    </button>
+                )}
             </div>
 
             {/* Search and Filter */}

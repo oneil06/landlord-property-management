@@ -6,9 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("PRISMA_DATABASE_URL")
-  directUrl = env("POSTGRES_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 // User - Landlord account
@@ -18,6 +17,14 @@ model User {
   name          String?
   password      String
   phone         String?
+  
+  // Plan & Billing (stored as strings for SQLite compatibility)
+  plan                  String    @default("FREE") // FREE, PRO, BUSINESS
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+  planStatus            String?   @default("ACTIVE") // ACTIVE, PAST_DUE, CANCELED
+  planUpdatedAt         DateTime?
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
@@ -28,6 +35,11 @@ model User {
   maintenance   MaintenanceRequest[]
   reminders     RentReminder[]
   notifications Notification[]
+  documents     Document[]
+  
+  // Team membership (for BUSINESS plan)
+  teamMembers   TeamMember[]  @relation("TeamOwner")
+  teamOf        TeamMember?   @relation("TeamMember")
 }
 
 // Property - Rental units owned by landlord
@@ -207,4 +219,51 @@ model Notification {
   createdAt       DateTime  @default(now())
   
   @@index([userId])
+}
+
+// TeamMember - Team members for BUSINESS plan
+model TeamMember {
+  id          String    @id @default(cuid())
+  teamOwnerId String    // User who owns the team (BUSINESS plan holder)
+  teamOwner   User      @relation("TeamOwner", fields: [teamOwnerId], references: [id], onDelete: Cascade)
+  
+  memberId    String    @unique // The user who is a team member
+  member      User      @relation("TeamMember", fields: [memberId], references: [id], onDelete: Cascade)
+  
+  role        String    @default("VIEWER") // OWNER, ADMIN, VIEWER
+  invitedAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([teamOwnerId])
+  @@index([memberId])
+}
+
+// Document - Store documents and images
+model Document {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name        String
+  originalName String
+  mimeType    String
+  size        Int       // File size in bytes
+  path        String    // File path on server
+  
+  // Optional associations
+  propertyId  String?
+  tenantId    String?
+  
+  category    String    @default("general") // general, lease, receipt, maintenance, legal, other
+  description String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([propertyId])
+  @@index([tenantId])
 }

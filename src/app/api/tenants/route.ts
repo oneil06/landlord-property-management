@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { assertPlanAllows, isUpgradeRequiredError } from '@/lib/plans'
 
 function getUserIdFromToken(token: string | null | undefined): string | null {
     if (!token) return null
@@ -56,6 +57,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // Check plan limits before creating tenant
+        await assertPlanAllows(userId, 'create_tenant')
+
         const body = await request.json()
         const {
             firstName,
@@ -98,6 +102,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ tenant })
     } catch (error) {
         console.error('Create tenant error:', error)
+
+        // Handle upgrade required error
+        if (isUpgradeRequiredError(error)) {
+            return NextResponse.json(error, { status: 402 }) // 402 Payment Required
+        }
+
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     }
 }
